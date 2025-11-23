@@ -6,19 +6,11 @@
     <title>Lista de Compras</title>
     
     <!-- --- CONFIGURAÇÕES PWA (APP NATIVO) --- -->
-    
-    <!-- 1. Cor do tema da barra de status (Android) -->
     <meta name="theme-color" content="#2563eb">
-    
-    <!-- 2. Configurações para iOS (iPhone/iPad) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Compras">
-    
-    <!-- Ícone para iOS -->
     <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/512/shopping-cart.png">
-    
-    <!-- MUDANÇA AQUI: Link para o arquivo de manifesto externo -->
     <link rel="manifest" href="manifest.json">
 
     <!-- Tailwind CSS -->
@@ -35,14 +27,11 @@
         body {
             background-color: #f3f4f6;
             touch-action: manipulation;
-            /* Prevenir seleção de texto acidental estilo app */
             -webkit-user-select: none;
             user-select: none;
-            /* Suporte para safe-area no iPhone X+ (o notch) */
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
         }
-        /* Permitir seleção apenas nos inputs */
         input {
             -webkit-user-select: text;
             user-select: text;
@@ -54,16 +43,16 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        /* Removemos o active state agressivo que podia travar a UI em toque longo */
         .item-row:active {
-            background-color: #e5e7eb;
+            background-color: #f3f4f6;
         }
-        /* Animação suave para o modal */
         @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
         .animate-fade-in > div {
-            animation: fadeIn 0.2s ease-out forwards;
+            animation: fadeIn 0.15s ease-out forwards;
         }
     </style>
 </head>
@@ -80,7 +69,7 @@
 <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // --- ÍCONES (SVG Inline) ---
+    // Componentes de ícone simplificados para garantir renderização segura
     const IconCart = () => (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-16 h-16 mb-4 text-blue-200"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
     );
@@ -90,7 +79,7 @@
     );
 
     const IconTrash = () => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
     );
 
     function App() {
@@ -100,10 +89,8 @@
         const [qty, setQty] = useState('');
         const [itemToDelete, setItemToDelete] = useState(null);
 
-        // Referência para focar no input
         const nameInputRef = useRef(null);
 
-        // Carregar dados
         useEffect(() => {
             const savedItems = localStorage.getItem('myShoppingList');
             if (savedItems) {
@@ -115,16 +102,14 @@
             }
         }, []);
 
-        // Salvar dados
         useEffect(() => {
             localStorage.setItem('myShoppingList', JSON.stringify(items));
         }, [items]);
 
         const handleAddItem = (e) => {
             e.preventDefault();
-            if (!name) return; // Preço e Qtd podem ser opcionais se quiser, mas aqui vou manter obrigatório para cálculo correto
+            if (!name) return;
             
-            // Se preço ou qtd estiverem vazios, assumir 0 ou 1
             const finalPrice = price ? parseFloat(price) : 0;
             const finalQty = qty ? parseFloat(qty) : 1;
 
@@ -140,7 +125,6 @@
             setName('');
             setPrice('');
             setQty('');
-            // Focar novamente no campo de nome para inserção rápida
             if(nameInputRef.current) nameInputRef.current.focus();
         };
 
@@ -149,6 +133,10 @@
                 setItems(items.filter(item => item.id !== itemToDelete.id));
                 setItemToDelete(null);
             }
+        };
+
+        const cancelDelete = () => {
+            setItemToDelete(null);
         };
 
         const totalSum = items.reduce((acc, item) => acc + (item.price * item.qty), 0);
@@ -188,6 +176,8 @@
                                         key={item.id} 
                                         onClick={() => setItemToDelete(item)}
                                         className="item-row cursor-pointer transition-colors duration-150 hover:bg-gray-50"
+                                        role="button"
+                                        tabIndex="0"
                                     >
                                         <td className="p-3 pl-4 font-medium text-gray-800 break-words">{item.name}</td>
                                         <td className="p-3 text-right text-gray-600 text-sm">
@@ -267,10 +257,11 @@
                     </div>
                 </div>
 
-                {/* Modal de Exclusão */}
+                {/* Modal de Exclusão (Simplificado para evitar crash) */}
                 {itemToDelete && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 animate-fade-in">
-                        <div className="bg-white w-full sm:w-auto sm:min-w-[320px] rounded-t-2xl sm:rounded-xl shadow-2xl p-6 m-0 sm:m-4">
+                    /* Removemos backdrop-blur-sm que causa crash em alguns mobiles */
+                    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 animate-fade-in">
+                        <div className="bg-white w-full sm:w-auto sm:min-w-[320px] rounded-t-2xl sm:rounded-xl shadow-2xl p-6 m-0 sm:m-4" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-3 mb-4 text-red-600">
                                 <div className="bg-red-100 p-2 rounded-full">
                                     <IconTrash />
@@ -279,7 +270,7 @@
                             </div>
                             
                             <p className="text-gray-600 mb-6 text-base leading-relaxed">
-                                Você deseja remover <strong className="text-gray-900">{itemToDelete.name}</strong> da sua lista de compras?
+                                Você deseja remover <strong className="text-gray-900">{itemToDelete.name || 'este item'}</strong> da sua lista?
                             </p>
                             
                             <div className="flex flex-col sm:flex-row gap-3">
@@ -306,12 +297,9 @@
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
 
-    // MUDANÇA AQUI: Registro do Service Worker (Obrigatório para PWA funcionar no Android)
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('App instalado:', reg.scope))
-                .catch(err => console.log('Falha na instalação:', err));
+            navigator.serviceWorker.register('./sw.js').catch(err => console.log('Falha na instalação:', err));
         });
     }
 

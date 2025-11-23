@@ -15,12 +15,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Compras">
     
-    <!-- Ícone para iOS (Usando um ícone público de alta qualidade) -->
+    <!-- Ícone para iOS -->
     <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/512/shopping-cart.png">
     
-    <!-- 3. Manifesto Web App (Embutido para manter arquivo único) 
-         Isso diz ao Android para esconder a barra de URL e usar o ícone -->
-    <link rel="manifest" href='data:application/manifest+json,{"name":"Lista de Compras","short_name":"Compras","start_url":".","display":"standalone","background_color":"#ffffff","theme_color":"#2563eb","icons":[{"src":"https://img.icons8.com/fluency/512/shopping-cart.png","sizes":"512x512","type":"image/png"}]}'>
+    <!-- MUDANÇA AQUI: Link para o arquivo de manifesto externo -->
+    <link rel="manifest" href="manifest.json">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -306,6 +305,15 @@
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
+
+    // MUDANÇA AQUI: Registro do Service Worker (Obrigatório para PWA funcionar no Android)
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('App instalado:', reg.scope))
+                .catch(err => console.log('Falha na instalação:', err));
+        });
+    }
 
 </script>
 </body>

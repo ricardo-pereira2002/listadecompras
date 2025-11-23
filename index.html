@@ -5,21 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Lista de Compras</title>
     
-    <!-- Tailwind CSS para estilização rápida e responsiva -->
+    <!-- --- CONFIGURAÇÕES PWA (APP NATIVO) --- -->
+    
+    <!-- 1. Cor do tema da barra de status (Android) -->
+    <meta name="theme-color" content="#2563eb">
+    
+    <!-- 2. Configurações para iOS (iPhone/iPad) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Compras">
+    
+    <!-- Ícone para iOS (Usando um ícone público de alta qualidade) -->
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/512/shopping-cart.png">
+    
+    <!-- 3. Manifesto Web App (Embutido para manter arquivo único) 
+         Isso diz ao Android para esconder a barra de URL e usar o ícone -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Lista de Compras","short_name":"Compras","start_url":".","display":"standalone","background_color":"#ffffff","theme_color":"#2563eb","icons":[{"src":"https://img.icons8.com/fluency/512/shopping-cart.png","sizes":"512x512","type":"image/png"}]}'>
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- React e ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     
-    <!-- Babel para traduzir JSX -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        /* Ajustes finos para sensação de app nativo */
         body {
             background-color: #f3f4f6;
             touch-action: manipulation;
+            /* Prevenir seleção de texto acidental estilo app */
+            -webkit-user-select: none;
+            user-select: none;
+            /* Suporte para safe-area no iPhone X+ (o notch) */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        /* Permitir seleção apenas nos inputs */
+        input {
+            -webkit-user-select: text;
+            user-select: text;
         }
         .hide-scrollbar::-webkit-scrollbar {
             display: none;
@@ -28,30 +55,39 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
-        /* Efeito de clique nas linhas */
         .item-row:active {
             background-color: #e5e7eb;
+        }
+        /* Animação suave para o modal */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in > div {
+            animation: fadeIn 0.2s ease-out forwards;
         }
     </style>
 </head>
 <body>
 
 <div id="root">
-    <div style="display:flex;justify-content:center;align-items:center;height:100vh;color:#666;font-family:sans-serif;">
-        Carregando aplicativo...
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;color:#666;font-family:sans-serif;gap:15px;">
+        <div style="width:40px;height:40px;border:3px solid #ddd;border-top-color:#2563eb;border-radius:50%;animation:spin 1s linear infinite;"></div>
+        <div>Carregando Lista...</div>
     </div>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
 </div>
 
 <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // --- ÍCONES (SVG Inline para evitar erros de carregamento externo) ---
+    // --- ÍCONES (SVG Inline) ---
     const IconCart = () => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-12 h-12 mb-2 opacity-50"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-16 h-16 mb-4 text-blue-200"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
     );
 
     const IconPlus = () => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
     );
 
     const IconTrash = () => (
@@ -59,18 +95,16 @@
     );
 
     function App() {
-        // --- ESTADOS ---
         const [items, setItems] = useState([]);
         const [name, setName] = useState('');
         const [price, setPrice] = useState('');
         const [qty, setQty] = useState('');
-        
-        // Estado para controlar o modal de exclusão
         const [itemToDelete, setItemToDelete] = useState(null);
 
-        // --- PERSISTÊNCIA (Carregar e Salvar) ---
-        
-        // Carregar dados ao iniciar
+        // Referência para focar no input
+        const nameInputRef = useRef(null);
+
+        // Carregar dados
         useEffect(() => {
             const savedItems = localStorage.getItem('myShoppingList');
             if (savedItems) {
@@ -82,32 +116,33 @@
             }
         }, []);
 
-        // Salvar dados sempre que a lista mudar
+        // Salvar dados
         useEffect(() => {
             localStorage.setItem('myShoppingList', JSON.stringify(items));
         }, [items]);
 
-        // --- LÓGICA ---
-
         const handleAddItem = (e) => {
             e.preventDefault();
+            if (!name) return; // Preço e Qtd podem ser opcionais se quiser, mas aqui vou manter obrigatório para cálculo correto
             
-            if (!name || !price || !qty) return;
+            // Se preço ou qtd estiverem vazios, assumir 0 ou 1
+            const finalPrice = price ? parseFloat(price) : 0;
+            const finalQty = qty ? parseFloat(qty) : 1;
 
             const newItem = {
-                id: Date.now(), // ID único baseado no tempo
+                id: Date.now(),
                 name: name,
-                price: parseFloat(price),
-                qty: parseFloat(qty)
+                price: finalPrice,
+                qty: finalQty
             };
 
             setItems([...items, newItem]);
             
-            // Limpar campos e manter foco no nome para digitar o próximo
             setName('');
             setPrice('');
             setQty('');
-            document.getElementById('input-name').focus();
+            // Focar novamente no campo de nome para inserção rápida
+            if(nameInputRef.current) nameInputRef.current.focus();
         };
 
         const confirmDelete = () => {
@@ -117,54 +152,52 @@
             }
         };
 
-        const cancelDelete = () => {
-            setItemToDelete(null);
-        };
-
-        // Cálculos de totais
         const totalSum = items.reduce((acc, item) => acc + (item.price * item.qty), 0);
 
-        // --- RENDERIZAÇÃO ---
         return (
-            <div className="flex flex-col h-screen max-w-md mx-auto bg-white shadow-xl overflow-hidden relative">
+            <div className="flex flex-col h-screen max-w-md mx-auto bg-white shadow-2xl overflow-hidden relative">
                 
                 {/* Cabeçalho */}
-                <header className="bg-blue-600 text-white p-4 shadow-md z-10">
-                    <h1 className="text-xl font-bold text-center">Lista de Compras</h1>
+                <header className="bg-blue-600 text-white p-4 shadow-md z-10 flex justify-between items-center pt-safe-top">
+                    <h1 className="text-xl font-bold tracking-tight">Minha Lista</h1>
+                    <div className="text-blue-100 text-sm font-medium bg-blue-700 px-2 py-1 rounded-md">
+                        {items.length} itens
+                    </div>
                 </header>
 
-                {/* Área de Conteúdo (Lista) com rolagem */}
-                <div className="flex-1 overflow-y-auto pb-32">
+                {/* Lista */}
+                <div className="flex-1 overflow-y-auto pb-40 bg-gray-50">
                     {items.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400 p-8 text-center">
                             <IconCart />
-                            <p>Sua lista está vazia.</p>
+                            <p className="text-lg font-medium text-gray-500">Sua lista está vazia</p>
+                            <p className="text-sm mt-2">Adicione itens usando o formulário abaixo.</p>
                         </div>
                     ) : (
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-gray-100 text-gray-600 text-xs uppercase sticky top-0 shadow-sm">
+                            <thead className="bg-white text-gray-500 text-xs uppercase sticky top-0 shadow-sm z-0">
                                 <tr>
-                                    <th className="p-3 font-semibold">Item</th>
-                                    <th className="p-3 font-semibold text-right">R$ Un.</th>
-                                    <th className="p-3 font-semibold text-center">Qtd</th>
-                                    <th className="p-3 font-semibold text-right">Total</th>
+                                    <th className="p-3 pl-4 font-semibold tracking-wider">Item</th>
+                                    <th className="p-3 font-semibold text-right w-20">R$ Un.</th>
+                                    <th className="p-3 font-semibold text-center w-14">Qtd</th>
+                                    <th className="p-3 pr-4 font-semibold text-right w-24">Total</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-gray-200 bg-white">
                                 {items.map((item) => (
                                     <tr 
                                         key={item.id} 
                                         onClick={() => setItemToDelete(item)}
-                                        className="border-b border-gray-100 item-row cursor-pointer transition-colors duration-150"
+                                        className="item-row cursor-pointer transition-colors duration-150 hover:bg-gray-50"
                                     >
-                                        <td className="p-3 font-medium text-gray-800">{item.name}</td>
+                                        <td className="p-3 pl-4 font-medium text-gray-800 break-words">{item.name}</td>
                                         <td className="p-3 text-right text-gray-600 text-sm">
-                                            {item.price.toFixed(2)}
+                                            {item.price > 0 ? item.price.toFixed(2) : '-'}
                                         </td>
-                                        <td className="p-3 text-center text-gray-600 text-sm">
+                                        <td className="p-3 text-center text-gray-600 text-sm font-medium bg-gray-50 rounded-sm mx-1">
                                             {item.qty}
                                         </td>
-                                        <td className="p-3 text-right font-bold text-blue-600">
+                                        <td className="p-3 pr-4 text-right font-bold text-blue-600 tabular-nums">
                                             {(item.price * item.qty).toFixed(2)}
                                         </td>
                                     </tr>
@@ -174,81 +207,94 @@
                     )}
                 </div>
 
-                {/* Formulário de Adição (Fixo na parte inferior acima do total) */}
-                <div className="bg-gray-50 border-t border-gray-200 p-3 z-20">
-                    <form onSubmit={handleAddItem} className="flex flex-col gap-2">
-                        <div className="flex gap-2">
+                {/* Área Inferior (Input + Total) */}
+                <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-20 pb-safe-bottom shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                    
+                    {/* Formulário */}
+                    <div className="p-3 bg-gray-50">
+                        <form onSubmit={handleAddItem} className="flex flex-col gap-2">
                             <input 
-                                id="input-name"
+                                ref={nameInputRef}
                                 type="text" 
-                                placeholder="Item (ex: Arroz)" 
-                                className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                placeholder="Nome do item..." 
+                                className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-base"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 autoComplete="off"
                             />
-                        </div>
-                        <div className="flex gap-2">
-                            <div className="relative flex-1">
-                                <span className="absolute left-3 top-2 text-gray-400 text-sm">R$</span>
+                            
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <span className="absolute left-3 top-3 text-gray-400 text-sm font-medium">R$</span>
+                                    <input 
+                                        type="number" 
+                                        inputMode="decimal" 
+                                        step="0.01" 
+                                        placeholder="0.00" 
+                                        className="w-full p-3 pl-9 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:border-blue-500 text-base"
+                                        value={price}
+                                        onChange={(e) => setPrice(e.target.value)}
+                                    />
+                                </div>
                                 <input 
                                     type="number" 
                                     inputMode="decimal" 
-                                    step="0.01" 
-                                    placeholder="0.00" 
-                                    className="w-full p-2 pl-8 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                                    value={price}
-                                    onChange={(e) => setPrice(e.target.value)}
+                                    step="0.001" 
+                                    placeholder="Qtd" 
+                                    className="w-20 p-3 border border-gray-300 rounded-lg shadow-sm text-center focus:outline-none focus:border-blue-500 text-base"
+                                    value={qty}
+                                    onChange={(e) => setQty(e.target.value)}
                                 />
-                            </div>
-                            <input 
-                                type="number" 
-                                inputMode="decimal" 
-                                step="0.001" 
-                                placeholder="Qtd" 
-                                className="w-20 p-2 border border-gray-300 rounded-lg text-center focus:outline-none focus:border-blue-500"
-                                value={qty}
-                                onChange={(e) => setQty(e.target.value)}
-                            />
-                            <button 
-                                type="submit" 
-                                className="bg-blue-600 text-white p-2 rounded-lg font-bold w-12 flex items-center justify-center active:bg-blue-800 transition-colors"
-                            >
-                                <IconPlus />
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                {/* Total Geral (Rodapé fixo) */}
-                <div className="bg-gray-900 text-white p-4 flex justify-between items-center z-30 shadow-lg">
-                    <span className="text-gray-400 font-medium">Total Geral</span>
-                    <span className="text-2xl font-bold text-green-400">
-                        R$ {totalSum.toFixed(2)}
-                    </span>
-                </div>
-
-                {/* Modal de Confirmação de Exclusão */}
-                {itemToDelete && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
-                        <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
-                            <h3 className="text-lg font-bold text-gray-800 mb-2">Remover Item?</h3>
-                            <p className="text-gray-600 mb-6">
-                                Deseja remover <strong>{itemToDelete.name}</strong> da lista?
-                            </p>
-                            <div className="flex gap-3 justify-end">
                                 <button 
-                                    onClick={cancelDelete}
-                                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300"
+                                    type="submit" 
+                                    className="bg-blue-600 text-white p-3 rounded-lg font-bold w-14 flex items-center justify-center shadow-md active:bg-blue-800 active:scale-95 transition-all"
                                 >
-                                    Cancelar
+                                    <IconPlus />
                                 </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* Barra de Total */}
+                    <div className="bg-gray-900 text-white p-4 flex justify-between items-center">
+                        <div className="flex flex-col">
+                            <span className="text-gray-400 text-xs uppercase tracking-wider font-bold">Total Estimado</span>
+                            <span className="text-xs text-gray-500">{items.length} itens na lista</span>
+                        </div>
+                        <span className="text-3xl font-bold text-green-400 tracking-tight tabular-nums">
+                            <span className="text-lg align-top mr-1 opacity-70">R$</span>
+                            {totalSum.toFixed(2)}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Modal de Exclusão */}
+                {itemToDelete && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 animate-fade-in">
+                        <div className="bg-white w-full sm:w-auto sm:min-w-[320px] rounded-t-2xl sm:rounded-xl shadow-2xl p-6 m-0 sm:m-4">
+                            <div className="flex items-center gap-3 mb-4 text-red-600">
+                                <div className="bg-red-100 p-2 rounded-full">
+                                    <IconTrash />
+                                </div>
+                                <h3 className="text-lg font-bold text-gray-900">Remover Item</h3>
+                            </div>
+                            
+                            <p className="text-gray-600 mb-6 text-base leading-relaxed">
+                                Você deseja remover <strong className="text-gray-900">{itemToDelete.name}</strong> da sua lista de compras?
+                            </p>
+                            
+                            <div className="flex flex-col sm:flex-row gap-3">
                                 <button 
                                     onClick={confirmDelete}
-                                    className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 flex items-center gap-2"
+                                    className="order-1 sm:order-2 flex-1 py-3 px-4 bg-red-600 text-white rounded-xl font-bold text-base hover:bg-red-700 active:bg-red-800 transition-colors shadow-sm"
                                 >
-                                    <IconTrash />
-                                    Remover
+                                    Sim, remover
+                                </button>
+                                <button 
+                                    onClick={cancelDelete}
+                                    className="order-2 sm:order-1 flex-1 py-3 px-4 bg-white border border-gray-300 text-gray-700 rounded-xl font-medium text-base hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                                >
+                                    Cancelar
                                 </button>
                             </div>
                         </div>
@@ -258,7 +304,6 @@
         );
     }
 
-    // Inicializar App
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
 

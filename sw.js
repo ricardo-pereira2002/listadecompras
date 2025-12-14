@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lista-compras-v1';
+const CACHE_NAME = 'lista-compras-v2';
 
 // Instalar o Service Worker e salvar o básico em cache
 self.addEventListener('install', (event) => {
